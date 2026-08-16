@@ -5,7 +5,6 @@ name: Container image
 #
 #   master push / manual dispatch  -> :latest, :sha-<short>
 #   dsh-v* tag push                -> :<version> (dsh-v0.1.0-rc.5 -> 0.1.0-rc.5), :latest
-#   pull_request                   -> build-only validation, nothing published
 #
 # Authentication is the repo-scoped GITHUB_TOKEN (packages: write) — no PAT or
 # secrets are needed. The image is built from THIS repository's exact commit via
@@ -15,7 +14,6 @@ on:
   push:
     branches: [master]
     tags: ['dsh-v*']
-  pull_request:
   workflow_dispatch:
 
 concurrency:
