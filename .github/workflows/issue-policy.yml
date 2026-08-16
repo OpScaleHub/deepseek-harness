@@ -1,10 +1,12 @@
+# Fork-local: this workflow only runs manually here.
+# .github/issue-management/config.json hardcodes organization "deepseek-harness"
+# and a GitHub Project (projectNumber 1, its own custom fields and statuses)
+# that only exists upstream; this fork has neither. See
+# .agents/notes/implemented/process/2026-08-16-fork-ci-trim.md
 name: Issue policy
 
 on:
-  pull_request:
-    types: [opened, edited, synchronize, reopened, labeled, unlabeled, ready_for_review, review_requested]
-  pull_request_review:
-    types: [submitted]
+  workflow_dispatch:
 
 permissions:
   contents: read

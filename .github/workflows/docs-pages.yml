@@ -1,17 +1,11 @@
+# Fork-local: this workflow only runs manually here until GitHub Pages is
+# enabled for this repository (Settings → Pages). `actions/configure-pages`
+# fails without it, so the automatic push trigger stays off; restoring the
+# `push` trigger below is the entire re-enable once Pages is on. See
+# .agents/notes/implemented/process/2026-08-16-fork-ci-trim.md
 name: Deploy documentation
 
 on:
-  push:
-    branches: [master]
-    paths:
-      - '.github/workflows/docs-pages.yml'
-      - 'docs/**'
-      - 'package.json'
-      - 'pnpm-lock.yaml'
-      - 'pnpm-workspace.yaml'
-      - 'scripts/project-doc-site.ts'
-      - 'scripts/project-doc-site.spec.ts'
-      - 'website/**'
   workflow_dispatch:
 
 concurrency:
