@@ -7,23 +7,26 @@
     
     <!-- Primary Meta Tags -->
     <meta name="title" content="DeepSeek Harness | Zero-Config Containerized AI Gateway & Deployment">
-    <meta name="description" content="Deploy DeepSeek harness effortlessly with pre-configured port binding, production-ready GHCR images, and streamlined Docker setups. Spin up your AI pipeline in seconds.">
+    <meta name="description" content="Deploy DeepSeek Harness effortlessly with a ready-to-run GHCR container image and a streamlined Docker setup. Spin up your AI pipeline in seconds.">
     <meta name="keywords" content="DeepSeek, GHCR, Docker, Container, AI Gateway, OpScaleHub, Open Source, LLM Harness">
     <meta name="author" content="OpScaleHub">
-    
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://opscalehub.github.io/deepseek-harness/">
     <meta property="og:title" content="DeepSeek Harness | Instant Container Deployment">
-    <meta property="og:description" content="Containerized DeepSeek harness with fixed port binding & ready-to-use GHCR images. Deploy in seconds.">
-    <meta property="og:image" content="https://placehold.co/1200x630/0f172a/38bdf8?text=DeepSeek+Harness+Launcher&font=roboto">
+    <meta property="og:description" content="Containerized DeepSeek Harness with ready-to-use GHCR images. Deploy in seconds.">
+    <meta property="og:image" content="https://placehold.co/1200x630/0f172a/38bdf8.png?text=DeepSeek+Harness+Launcher&font=roboto">
 
     <!-- Twitter / X -->
     <meta property="twitter:card" content="summary_large_image">
     <meta property="twitter:url" content="https://opscalehub.github.io/deepseek-harness/">
     <meta property="twitter:title" content="DeepSeek Harness | Instant Container Deployment">
-    <meta property="twitter:description" content="Containerized DeepSeek harness with fixed port binding & ready-to-use GHCR images. Deploy in seconds.">
-    <meta property="twitter:image" content="https://placehold.co/1200x630/0f172a/38bdf8?text=DeepSeek+Harness+Launcher&font=roboto">
+    <meta property="twitter:description" content="Containerized DeepSeek Harness with ready-to-use GHCR images. Deploy in seconds.">
+    <meta property="twitter:image" content="https://placehold.co/1200x630/0f172a/38bdf8.png?text=DeepSeek+Harness+Launcher&font=roboto">
 
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -73,7 +76,7 @@
                 </div>
                 <div>
                     <span class="font-bold text-lg tracking-tight bg-gradient-to-r from-white via-slate-200 to-sky-400 bg-clip-text text-transparent">DeepSeek Harness</span>
-                    <span class="hidden sm:inline-block ml-2 px-2 py-0.5 text-xs font-semibold bg-sky-500/10 text-sky-400 border border-sky-500/20 rounded-full">v1.2.0-fix</span>
+                    <span class="hidden sm:inline-block ml-2 px-2 py-0.5 text-xs font-semibold bg-sky-500/10 text-sky-400 border border-sky-500/20 rounded-full">latest</span>
                 </div>
             </div>
             
@@ -104,7 +107,7 @@
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
                 <div class="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-sky-500/10 border border-sky-500/20 text-sky-400 text-xs font-semibold mb-6 animate-pulse">
                     <i class="fa-solid fa-circle-check"></i>
-                    <span>GHCR Container Ready • Port Binding Fixed & Optimized</span>
+                    <span>GHCR Container Ready • Binds All Interfaces by Default</span>
                 </div>
                 
                 <h1 class="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-white max-w-4xl mx-auto leading-tight">
@@ -112,7 +115,7 @@
                 </h1>
                 
                 <p class="mt-6 text-lg sm:text-xl text-slate-400 max-w-2xl mx-auto font-normal">
-                    Packaged cleanly into standard OCI containers. Solved port mapping bottlenecks and environment configuration out-of-the-box via <span class="text-slate-200 font-medium">OpScaleHub</span>.
+                    Packaged cleanly into standard OCI containers, reachable on port 3080 out-of-the-box, via <span class="text-slate-200 font-medium">OpScaleHub</span>.
                 </p>
 
                 <!-- Quick Terminal Copy Box -->
@@ -120,9 +123,9 @@
                     <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-2 sm:p-3 shadow-2xl glow-effect flex items-center justify-between text-left">
                         <div class="flex items-center space-x-3 overflow-x-auto py-1 px-2">
                             <i class="fa-solid fa-terminal text-sky-400 flex-shrink-0"></i>
-                            <code id="quick-command" class="text-xs sm:text-sm text-slate-200 whitespace-nowrap">docker run -d -p 8080:8080 ghcr.io/opscalehub/deepseek-harness:latest</code>
+                            <code id="quick-command" class="text-xs sm:text-sm text-slate-200 whitespace-nowrap">docker run -d -p 3080:3080 -v dsh-data:/root/.dsh ghcr.io/opscalehub/deepseek-harness:latest</code>
                         </div>
-                        <button onclick="copyToClipboard('docker run -d -p 8080:8080 ghcr.io/opscalehub/deepseek-harness:latest', this)" class="ml-2 px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-medium transition flex items-center space-x-1.5 flex-shrink-0">
+                        <button onclick="copyToClipboard('docker run -d -p 3080:3080 -v dsh-data:/root/.dsh ghcr.io/opscalehub/deepseek-harness:latest', this)" class="ml-2 px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-medium transition flex items-center space-x-1.5 flex-shrink-0">
                             <i class="fa-regular fa-copy"></i>
                             <span class="hidden sm:inline">Copy</span>
                         </button>
@@ -160,25 +163,24 @@
 
                         <div>
                             <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Host Port Mapping</label>
-                            <input type="number" id="host-port" value="8080" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-100 text-sm focus:outline-none focus:border-sky-500 transition" oninput="updateConfigCommand()">
-                            <p class="mt-1 text-xs text-slate-500">Fixed container listening port mapped to host.</p>
+                            <input type="number" id="host-port" value="3080" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-100 text-sm focus:outline-none focus:border-sky-500 transition" oninput="updateConfigCommand()">
+                            <p class="mt-1 text-xs text-slate-500">The container always listens on 3080; this maps it to a host port.</p>
                         </div>
 
                         <div>
                             <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">GHCR Image Tag</label>
                             <select id="image-tag" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-100 text-sm focus:outline-none focus:border-sky-500 transition" onchange="updateConfigCommand()">
-                                <option value="latest">latest (Stable Release)</option>
-                                <option value="v1.2.0">v1.2.0 (Port Fix Release)</option>
-                                <option value="nightly">nightly (Experimental)</option>
+                                <option value="latest">latest (tracks master)</option>
+                                <option value="sha-abcdef1">sha-&lt;short&gt; (pin to a commit)</option>
                             </select>
                         </div>
 
                         <div>
-                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Environment Mode</label>
-                            <select id="env-mode" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-100 text-sm focus:outline-none focus:border-sky-500 transition" onchange="updateConfigCommand()">
-                                <option value="production">Production (Optimized & Secure)</option>
-                                <option value="development">Development (Verbose Debug Logs)</option>
-                            </select>
+                            <label class="flex items-center space-x-3 cursor-pointer">
+                                <input type="checkbox" id="disable-telemetry" class="w-4 h-4 rounded bg-slate-950 border-slate-700 text-sky-500 focus:ring-0" onchange="updateConfigCommand()">
+                                <span class="text-sm text-slate-300 font-medium">Disable telemetry (`DSH_TELEMETRY_DISABLED=1`)</span>
+                            </label>
+                            <p class="mt-1 text-xs text-slate-500">Data (profiles, sessions, settings) lives under <code>/root/.dsh</code>; set <code>DSH_HOME</code> to relocate it. Model credentials are configured later in the web UI's Settings, not via environment variables.</p>
                         </div>
 
                         <div class="pt-2">
@@ -204,8 +206,8 @@
                             <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 relative group">
                                 <pre id="generated-command" class="text-xs text-sky-300 overflow-x-auto whitespace-pre-wrap break-all">docker run -d \
   --name deepseek-harness \
-  -p 8080:8080 \
-  -e NODE_ENV=production \
+  -p 3080:3080 \
+  -v dsh-data:/root/.dsh \
   --restart unless-stopped \
   ghcr.io/opscalehub/deepseek-harness:latest</pre>
                             </div>
@@ -216,6 +218,11 @@
                                 <i class="fa-regular fa-copy"></i>
                                 <span>Copy Deployment Snippet</span>
                             </button>
+                        </div>
+
+                        <div class="mt-4 flex items-start space-x-2.5 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3.5">
+                            <i class="fa-solid fa-triangle-exclamation text-amber-400 mt-0.5 flex-shrink-0"></i>
+                            <p class="text-xs text-amber-200/80">The image binds all interfaces by default, overriding the product's loopback-only default. Anyone who can reach the port can run code on the host — restrict network access to it, or add <code class="text-amber-200">--host 127.0.0.1</code> to the command to fall back to loopback.</p>
                         </div>
                     </div>
                 </div>
@@ -234,8 +241,8 @@
                     <div class="w-12 h-12 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400 text-xl mb-4">
                         <i class="fa-solid fa-network-wired"></i>
                     </div>
-                    <h3 class="text-lg font-semibold text-white">Fixed Port Binding</h3>
-                    <p class="mt-2 text-slate-400 text-sm">Resolved upstream connection dropouts and listener port constraints so it binds smoothly out of the box in dockerized clusters.</p>
+                    <h3 class="text-lg font-semibold text-white">Reachable by Default</h3>
+                    <p class="mt-2 text-slate-400 text-sm">The product loopback-binds its web surface and refuses <code>--host 0.0.0.0</code> by default. The container applies an explicit patch overlay to bind all interfaces, so the published port is reachable out of the box — pass <code>--host 127.0.0.1</code> to restore loopback-only.</p>
                 </div>
 
                 <!-- Feature 2 -->
@@ -253,7 +260,7 @@
                         <i class="fa-solid fa-bolt"></i>
                     </div>
                     <h3 class="text-lg font-semibold text-white">Zero Overhead</h3>
-                    <p class="mt-2 text-slate-400 text-sm">Streamlined alpine-based multi-stage builds keeping image size minimal for lightning-fast pulls and scalable cluster orchestration.</p>
+                    <p class="mt-2 text-slate-400 text-sm">Streamlined slim, Debian-based multi-stage builds — the build tree is compiled in a builder stage and copied into a lean runtime stage for fast pulls and scalable cluster orchestration.</p>
                 </div>
             </div>
         </section>
@@ -285,8 +292,20 @@ services:<br>
 &nbsp;&nbsp;deepseek-harness:<br>
 &nbsp;&nbsp;&nbsp;&nbsp;image: ghcr.io/opscalehub/deepseek-harness:latest<br>
 &nbsp;&nbsp;&nbsp;&nbsp;ports:<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- "8080:8080"<br>
-&nbsp;&nbsp;&nbsp;&nbsp;restart: unless-stopped</div>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- "3080:3080"<br>
+&nbsp;&nbsp;&nbsp;&nbsp;volumes:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- dsh-data:/root/.dsh<br>
+&nbsp;&nbsp;&nbsp;&nbsp;restart: unless-stopped<br>
+volumes:<br>
+&nbsp;&nbsp;dsh-data:</div>
+                    </div>
+
+                    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+                        <div class="flex items-center space-x-3 mb-3">
+                            <span class="w-7 h-7 rounded-full bg-sky-500/20 border border-sky-500/30 text-sky-400 font-bold text-xs flex items-center justify-center">3</span>
+                            <h3 class="font-semibold text-white text-base">Configure a Model</h3>
+                        </div>
+                        <p class="text-slate-400 text-sm">Open <code class="text-sky-300">http://localhost:3080</code>, choose a workspace, and add a provider under Settings. Model credentials are entered through the web UI and stored server-side — the container takes no API-key environment variables.</p>
                     </div>
                 </div>
             </div>
@@ -329,12 +348,15 @@ services:<br>
 
         // Live Config Generator Logic
         function updateConfigCommand() {
-            const port = document.getElementById('host-port').value || '8080';
+            const port = document.getElementById('host-port').value || '3080';
             const tag = document.getElementById('image-tag').value;
-            const env = document.getElementById('env-mode').value;
+            const disableTelemetry = document.getElementById('disable-telemetry').checked;
             const restart = document.getElementById('restart-policy').checked;
 
-            let cmd = `docker run -d \\\n  --name deepseek-harness \\\n  -p ${port}:8080 \\\n  -e NODE_ENV=${env}`;
+            let cmd = `docker run -d \\\n  --name deepseek-harness \\\n  -p ${port}:3080 \\\n  -v dsh-data:/root/.dsh`;
+            if (disableTelemetry) {
+                cmd += ` \\\n  -e DSH_TELEMETRY_DISABLED=1`;
+            }
             if (restart) {
                 cmd += ` \\\n  --restart unless-stopped`;
             }
