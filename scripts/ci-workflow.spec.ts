@@ -70,20 +70,17 @@ describe('CI workflow', () => {
 })
 
 // Fork-local: this fork has never configured the DEEPSEEK_API_KEY_EXTERNAL
-// secret the real-API e2e preflight requires, so the `push`/`schedule`
-// triggers that always ran (and always hard-failed the preflight) are
-// dropped. `pull_request` stays: this repository's own `head.repo.fork` is
-// always true, so its untrusted-PR skip already covers every PR here.
+// secret the real-API e2e preflight requires, so this workflow has no
+// automatic trigger at all — every automatic trigger would only ever
+// hard-fail the deliberately loud preflight.
 // .agents/notes/implemented/process/2026-08-16-fork-ci-trim.md
 describe('Real-API e2e workflow', () => {
-  it('drops the push and schedule triggers this fork cannot satisfy, keeping pull_request and workflow_dispatch', () => {
+  it('is manual-only', () => {
     const workflow = loadWorkflow('.github/workflows/e2e.yml')
     const job = workflowJob(workflow, 'e2e')
 
-    expect(workflow.on).toEqual({ workflow_dispatch: null, pull_request: null })
-    expect(job.if).toBe(
-      "github.event_name != 'pull_request' || !(github.event.pull_request.head.repo.fork || github.event.pull_request.user.login == 'dependabot[bot]')",
-    )
+    expect(workflow.on).toEqual({ workflow_dispatch: null })
+    expect(job.if).toBeUndefined()
     expect(JSON.stringify(job.steps)).toContain('DEEPSEEK_API_KEY_EXTERNAL')
   })
 })
