@@ -9,11 +9,26 @@ name: Container image
 # Authentication is the repo-scoped GITHUB_TOKEN (packages: write) — no PAT or
 # secrets are needed. The image is built from THIS repository's exact commit via
 # the Containerfile REPO_URL/REPO_REF build args, never from upstream HEAD.
+#
+# paths-ignore skips the trigger for paths the Containerfile never reads: it
+# clones the repo itself via REPO_URL/REPO_REF and copies only
+# container/web-bind-all.patch.yml from the build context, then runs
+# `pnpm install` and `pnpm run build` over the workspace (packages/*), so
+# docs/site/example/agent-note-only commits produce a byte-identical image.
+# GHA's BuildKit cache can't help here regardless: the git-checkout layer's
+# cache key is REPO_REF, which changes on every commit, invalidating every
+# downstream layer even when the actual build inputs did not change.
 
 on:
   push:
     branches: [master]
     tags: ['dsh-v*']
+    paths-ignore:
+      - 'docs/**'
+      - 'website/**'
+      - 'examples/**'
+      - '.agents/**'
+      - '**/*.md'
   workflow_dispatch:
 
 concurrency:

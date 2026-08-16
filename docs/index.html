@@ -150,7 +150,20 @@
             <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="text-center mb-12">
                     <h2 class="text-2xl sm:text-3xl font-bold text-white tracking-tight">Interactive Container Configurator</h2>
-                    <p class="mt-2 text-slate-400 text-sm sm:text-base">Customize your environment variables, port bindings, and deployment command instantly.</p>
+                    <p class="mt-2 text-slate-400 text-sm sm:text-base">Set your model provider, run mode, and persistence, then generate a Docker command or a Kubernetes manifest instantly.</p>
+                </div>
+
+                <div class="flex justify-center mb-8">
+                    <div class="inline-flex items-center bg-slate-900 border border-slate-800 rounded-xl p-1 space-x-1">
+                        <button type="button" id="target-docker-btn" onclick="setTarget('docker')" class="px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center space-x-2 bg-sky-500 text-white">
+                            <i class="fa-brands fa-docker"></i>
+                            <span>Docker</span>
+                        </button>
+                        <button type="button" id="target-k8s-btn" onclick="setTarget('kubernetes')" class="px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center space-x-2 text-slate-300 hover:text-white">
+                            <i class="fa-solid fa-dharmachakra"></i>
+                            <span>Kubernetes</span>
+                        </button>
+                    </div>
                 </div>
 
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
@@ -162,12 +175,6 @@
                         </h3>
 
                         <div>
-                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Host Port Mapping</label>
-                            <input type="number" id="host-port" value="3080" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-100 text-sm focus:outline-none focus:border-sky-500 transition" oninput="updateConfigCommand()">
-                            <p class="mt-1 text-xs text-slate-500">The container always listens on 3080; this maps it to a host port.</p>
-                        </div>
-
-                        <div>
                             <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">GHCR Image Tag</label>
                             <select id="image-tag" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-100 text-sm focus:outline-none focus:border-sky-500 transition" onchange="updateConfigCommand()">
                                 <option value="latest">latest (tracks master)</option>
@@ -176,18 +183,54 @@
                         </div>
 
                         <div>
+                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">DeepSeek API Key <span class="normal-case text-slate-500">(optional)</span></label>
+                            <input type="text" id="deepseek-api-key" placeholder="sk-…" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-100 text-sm font-mono focus:outline-none focus:border-sky-500 transition" oninput="updateConfigCommand()">
+                            <p class="mt-1 text-xs text-slate-500">Sets <code>DEEPSEEK_API_KEY</code> at startup so the built-in provider is ready immediately — no trip to Settings. Leave blank to configure it later in the web UI instead.</p>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">DeepSeek Base URL <span class="normal-case text-slate-500">(optional)</span></label>
+                            <input type="text" id="deepseek-base-url" placeholder="https://api.deepseek.com" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-100 text-sm font-mono focus:outline-none focus:border-sky-500 transition" oninput="updateConfigCommand()">
+                            <p class="mt-1 text-xs text-slate-500">Sets <code>DEEPSEEK_BASE_URL</code>, redirecting the built-in adapter to a self-hosted mirror or gateway that speaks the DeepSeek wire protocol.</p>
+                        </div>
+
+                        <div>
                             <label class="flex items-center space-x-3 cursor-pointer">
                                 <input type="checkbox" id="disable-telemetry" class="w-4 h-4 rounded bg-slate-950 border-slate-700 text-sky-500 focus:ring-0" onchange="updateConfigCommand()">
                                 <span class="text-sm text-slate-300 font-medium">Disable telemetry (`DSH_TELEMETRY_DISABLED=1`)</span>
                             </label>
-                            <p class="mt-1 text-xs text-slate-500">Data (profiles, sessions, settings) lives under <code>/root/.dsh</code>; set <code>DSH_HOME</code> to relocate it. Model credentials are configured later in the web UI's Settings, not via environment variables.</p>
+                            <p class="mt-1 text-xs text-slate-500">Data (profiles, sessions, settings) lives under <code>/root/.dsh</code>; set <code>DSH_HOME</code> to relocate it. See <a href="#config" class="text-sky-400 hover:underline">Configuration Reference</a> for a custom OpenAI-compatible gateway.</p>
                         </div>
 
-                        <div class="pt-2">
+                        <div id="docker-only-fields" class="space-y-5">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Host Port Mapping</label>
+                                <input type="number" id="host-port" value="3080" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-100 text-sm focus:outline-none focus:border-sky-500 transition" oninput="updateConfigCommand()">
+                                <p class="mt-1 text-xs text-slate-500">The container always listens on 3080; this maps it to a host port.</p>
+                            </div>
+
+                            <div class="pt-2">
+                                <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Run Mode</label>
+                                <div class="space-y-2">
+                                    <label class="flex items-center space-x-3 cursor-pointer">
+                                        <input type="radio" name="run-mode" id="run-mode-detached" value="detached" checked class="w-4 h-4 bg-slate-950 border-slate-700 text-sky-500 focus:ring-0" onchange="updateConfigCommand()">
+                                        <span class="text-sm text-slate-300 font-medium">Detached, auto-restart (`-d --restart unless-stopped`)</span>
+                                    </label>
+                                    <label class="flex items-center space-x-3 cursor-pointer">
+                                        <input type="radio" name="run-mode" id="run-mode-interactive" value="interactive" class="w-4 h-4 bg-slate-950 border-slate-700 text-sky-500 focus:ring-0" onchange="updateConfigCommand()">
+                                        <span class="text-sm text-slate-300 font-medium">Interactive, disposable (`--rm -it`)</span>
+                                    </label>
+                                </div>
+                                <p class="mt-1 text-xs text-slate-500">Interactive mode runs attached to your terminal and removes the container the moment it stops — no background process to find and clean up later.</p>
+                            </div>
+                        </div>
+
+                        <div id="k8s-only-fields" class="hidden pt-2">
                             <label class="flex items-center space-x-3 cursor-pointer">
-                                <input type="checkbox" id="restart-policy" checked class="w-4 h-4 rounded bg-slate-950 border-slate-700 text-sky-500 focus:ring-0" onchange="updateConfigCommand()">
-                                <span class="text-sm text-slate-300 font-medium">Enable automatic restart (`--restart unless-stopped`)</span>
+                                <input type="checkbox" id="k8s-pvc" checked class="w-4 h-4 rounded bg-slate-950 border-slate-700 text-sky-500 focus:ring-0" onchange="updateConfigCommand()">
+                                <span class="text-sm text-slate-300 font-medium">Persist data (PersistentVolumeClaim)</span>
                             </label>
+                            <p class="mt-1 text-xs text-slate-500">Mounts a 5Gi PVC at <code>/root/.dsh</code>. Unchecked, the Deployment gets no volume there and data is lost on pod restart.</p>
                         </div>
                     </div>
 
@@ -195,13 +238,13 @@
                     <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col justify-between h-full">
                         <div>
                             <div class="flex items-center justify-between mb-4">
-                                <h3 class="text-lg font-semibold text-white flex items-center space-x-2">
+                                <h3 id="generated-output-title" class="text-lg font-semibold text-white flex items-center space-x-2">
                                     <i class="fa-solid fa-code text-sky-400"></i>
                                     <span>Generated Command</span>
                                 </h3>
                                 <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Ready to Run</span>
                             </div>
-                            <p class="text-xs text-slate-400 mb-4">Copy and paste this snippet directly into your terminal or deployment script.</p>
+                            <p id="generated-output-hint" class="text-xs text-slate-400 mb-4">Copy and paste this snippet directly into your terminal or deployment script.</p>
 
                             <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 relative group">
                                 <pre id="generated-command" class="text-xs text-sky-300 overflow-x-auto whitespace-pre-wrap break-all">docker run -d \
@@ -222,8 +265,46 @@
 
                         <div class="mt-4 flex items-start space-x-2.5 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3.5">
                             <i class="fa-solid fa-triangle-exclamation text-amber-400 mt-0.5 flex-shrink-0"></i>
-                            <p class="text-xs text-amber-200/80">The image binds all interfaces by default, overriding the product's loopback-only default. Anyone who can reach the port can run code on the host — restrict network access to it, or add <code class="text-amber-200">--host 127.0.0.1</code> to the command to fall back to loopback.</p>
+                            <p class="text-xs text-amber-200/80">The image binds all interfaces inside the container, overriding the product's loopback-only default. In Docker, that means the published port is reachable from anywhere that can reach the host port — add <code class="text-amber-200">--host 127.0.0.1</code> to fall back to loopback. In Kubernetes, exposure instead depends on the Service; the generated <code class="text-amber-200">ClusterIP</code> keeps it cluster-internal until you add an Ingress, NodePort, or LoadBalancer.</p>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="config" class="py-20 bg-slate-900/30 border-y border-slate-800/60">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="text-center max-w-3xl mx-auto mb-16">
+                    <h2 class="text-3xl font-bold tracking-tight text-white sm:text-4xl">Configuration Reference</h2>
+                    <p class="mt-4 text-slate-400">What's actually configurable at startup, pulled from the harness's own plugin config — not everything, just what a container operator needs.</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div class="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-6">
+                        <div class="w-12 h-12 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400 text-xl mb-4">
+                            <i class="fa-solid fa-key"></i>
+                        </div>
+                        <h3 class="text-lg font-semibold text-white">Built-in DeepSeek Provider</h3>
+                        <p class="mt-2 text-slate-400 text-sm"><code class="text-sky-300">DEEPSEEK_API_KEY</code> and <code class="text-sky-300">DEEPSEEK_BASE_URL</code> are read at container start — the inherited environment always outranks anything saved later through the web UI's Settings. Set them once with <code class="text-sky-300">-e</code> and the provider is ready on first load; leave them unset to configure DeepSeek through Settings instead.</p>
+                        <p class="mt-3 text-xs text-slate-500">Restarting the container is required to pick up a changed value — the credential snapshot is read once, at launch.</p>
+                    </div>
+
+                    <div class="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-6">
+                        <div class="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 text-xl mb-4">
+                            <i class="fa-solid fa-database"></i>
+                        </div>
+                        <h3 class="text-lg font-semibold text-white">Data, Home & Telemetry</h3>
+                        <p class="mt-2 text-slate-400 text-sm">All harness data — profiles, sessions, settings — lives under <code class="text-sky-300">/root/.dsh</code>. Mount a volume there (the generator does this by default) or set <code class="text-sky-300">DSH_HOME</code> to relocate it. Set <code class="text-sky-300">DSH_TELEMETRY_DISABLED=1</code> to turn off telemetry.</p>
+                    </div>
+
+                    <div class="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-6">
+                        <div class="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 text-xl mb-4">
+                            <i class="fa-solid fa-diagram-project"></i>
+                        </div>
+                        <h3 class="text-lg font-semibold text-white">Custom / Self-Hosted Gateway</h3>
+                        <p class="mt-2 text-slate-400 text-sm">A generic OpenAI-compatible endpoint isn't a single env var — it needs a provider entry. Mount a <code class="text-sky-300">settings.yaml</code> at <code class="text-sky-300">/root/.dsh/settings.yaml</code>:</p>
+                        <div class="mt-3 bg-slate-950 rounded-lg p-3 border border-slate-800 text-[11px] text-slate-300 font-mono overflow-x-auto leading-relaxed">llm-pi-ai:<br>&nbsp;&nbsp;providers:<br>&nbsp;&nbsp;&nbsp;&nbsp;my-gateway:<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;apiKeyEnv: GATEWAY_API_KEY<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;api: openai-completions<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;baseURL: https://gateway.example/v1<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;models:<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- id: my-model</div>
+                        <p class="mt-3 text-xs text-slate-500">Then set the env var it references (<code>GATEWAY_API_KEY</code> above) the same way as the built-in provider's key. The web UI's <strong>Add a custom provider</strong> form does the same thing without a mounted file.</p>
                     </div>
                 </div>
             </div>
@@ -283,7 +364,7 @@
                     <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6">
                         <div class="flex items-center space-x-3 mb-3">
                             <span class="w-7 h-7 rounded-full bg-sky-500/20 border border-sky-500/30 text-sky-400 font-bold text-xs flex items-center justify-center">2</span>
-                            <h3 class="font-semibold text-white text-base">Compose / Kubernetes Deployment</h3>
+                            <h3 class="font-semibold text-white text-base">Docker Compose Deployment</h3>
                         </div>
                         <p class="text-slate-400 text-sm mb-3">Prefer Docker Compose? Drop this into your `docker-compose.yml` file:</p>
                         <div class="bg-slate-950 rounded-xl p-3 border border-slate-800 text-xs text-slate-300 font-mono overflow-x-auto">
@@ -305,7 +386,7 @@ volumes:<br>
                             <span class="w-7 h-7 rounded-full bg-sky-500/20 border border-sky-500/30 text-sky-400 font-bold text-xs flex items-center justify-center">3</span>
                             <h3 class="font-semibold text-white text-base">Configure a Model</h3>
                         </div>
-                        <p class="text-slate-400 text-sm">Open <code class="text-sky-300">http://localhost:3080</code>, choose a workspace, and add a provider under Settings. Model credentials are entered through the web UI and stored server-side — the container takes no API-key environment variables.</p>
+                        <p class="text-slate-400 text-sm">Open <code class="text-sky-300">http://localhost:3080</code> and choose a workspace. If you set <code class="text-sky-300">DEEPSEEK_API_KEY</code> at startup, DeepSeek is already selectable — otherwise add a provider under Settings. See the <a href="#config" class="text-sky-400 hover:underline">Configuration Reference</a> for every startup-configurable variable.</p>
                     </div>
                 </div>
             </div>
@@ -347,22 +428,135 @@ volumes:<br>
         }
 
         // Live Config Generator Logic
+        let deployTarget = 'docker';
+
+        function setTarget(target) {
+            deployTarget = target;
+
+            const dockerBtn = document.getElementById('target-docker-btn');
+            const k8sBtn = document.getElementById('target-k8s-btn');
+            const isDocker = target === 'docker';
+            dockerBtn.className = `px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center space-x-2 ${isDocker ? 'bg-sky-500 text-white' : 'text-slate-300 hover:text-white'}`;
+            k8sBtn.className = `px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center space-x-2 ${isDocker ? 'text-slate-300 hover:text-white' : 'bg-sky-500 text-white'}`;
+
+            document.getElementById('docker-only-fields').classList.toggle('hidden', !isDocker);
+            document.getElementById('k8s-only-fields').classList.toggle('hidden', isDocker);
+
+            document.getElementById('generated-output-title').querySelector('span').textContent = isDocker ? 'Generated Command' : 'Generated Manifest';
+            document.getElementById('generated-output-hint').textContent = isDocker
+                ? 'Copy and paste this snippet directly into your terminal or deployment script.'
+                : 'Copy and paste this into a file and apply it with kubectl apply -f.';
+
+            updateConfigCommand();
+        }
+
         function updateConfigCommand() {
+            const cmd = deployTarget === 'docker' ? buildDockerCommand() : buildKubernetesManifest();
+            document.getElementById('generated-command').textContent = cmd;
+        }
+
+        function buildDockerCommand() {
             const port = document.getElementById('host-port').value || '3080';
             const tag = document.getElementById('image-tag').value;
+            const apiKey = document.getElementById('deepseek-api-key').value.trim();
+            const baseUrl = document.getElementById('deepseek-base-url').value.trim();
             const disableTelemetry = document.getElementById('disable-telemetry').checked;
-            const restart = document.getElementById('restart-policy').checked;
+            const interactive = document.getElementById('run-mode-interactive').checked;
 
-            let cmd = `docker run -d \\\n  --name deepseek-harness \\\n  -p ${port}:3080 \\\n  -v dsh-data:/root/.dsh`;
+            let cmd = interactive ? `docker run --rm -it \\\n  --name deepseek-harness` : `docker run -d \\\n  --name deepseek-harness`;
+            cmd += ` \\\n  -p ${port}:3080 \\\n  -v dsh-data:/root/.dsh`;
+            if (apiKey) {
+                cmd += ` \\\n  -e DEEPSEEK_API_KEY=${apiKey}`;
+            }
+            if (baseUrl) {
+                cmd += ` \\\n  -e DEEPSEEK_BASE_URL=${baseUrl}`;
+            }
             if (disableTelemetry) {
                 cmd += ` \\\n  -e DSH_TELEMETRY_DISABLED=1`;
             }
-            if (restart) {
+            if (!interactive) {
                 cmd += ` \\\n  --restart unless-stopped`;
             }
             cmd += ` \\\n  ghcr.io/opscalehub/deepseek-harness:${tag}`;
 
-            document.getElementById('generated-command').textContent = cmd;
+            return cmd;
+        }
+
+        function buildKubernetesManifest() {
+            const tag = document.getElementById('image-tag').value;
+            const apiKey = document.getElementById('deepseek-api-key').value.trim();
+            const baseUrl = document.getElementById('deepseek-base-url').value.trim();
+            const disableTelemetry = document.getElementById('disable-telemetry').checked;
+            const persist = document.getElementById('k8s-pvc').checked;
+
+            const envEntries = [];
+            if (baseUrl) envEntries.push(`            - name: DEEPSEEK_BASE_URL\n              value: "${baseUrl}"`);
+            if (disableTelemetry) envEntries.push(`            - name: DSH_TELEMETRY_DISABLED\n              value: "1"`);
+            if (apiKey) envEntries.push(`            - name: DEEPSEEK_API_KEY\n              valueFrom:\n                secretKeyRef:\n                  name: deepseek-harness-secret\n                  key: DEEPSEEK_API_KEY`);
+            const envBlock = envEntries.length ? `\n          env:\n${envEntries.join('\n')}` : '';
+
+            const volumeMountsBlock = persist ? `\n          volumeMounts:\n            - name: dsh-data\n              mountPath: /root/.dsh` : '';
+            const volumesBlock = persist ? `\n      volumes:\n        - name: dsh-data\n          persistentVolumeClaim:\n            claimName: deepseek-harness-data` : '';
+
+            let manifest = `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deepseek-harness
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: deepseek-harness
+  template:
+    metadata:
+      labels:
+        app: deepseek-harness
+    spec:
+      containers:
+        - name: deepseek-harness
+          image: ghcr.io/opscalehub/deepseek-harness:${tag}
+          ports:
+            - containerPort: 3080${envBlock}${volumeMountsBlock}${volumesBlock}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: deepseek-harness
+spec:
+  selector:
+    app: deepseek-harness
+  ports:
+    - port: 3080
+      targetPort: 3080
+  type: ClusterIP`;
+
+            if (persist) {
+                manifest += `
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: deepseek-harness-data
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 5Gi`;
+            }
+
+            if (apiKey) {
+                manifest += `
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: deepseek-harness-secret
+type: Opaque
+stringData:
+  DEEPSEEK_API_KEY: "${apiKey}"`;
+            }
+
+            return manifest;
         }
 
         function copyGeneratedCommand(btnElement) {
