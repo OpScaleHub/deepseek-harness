@@ -1,0 +1,13 @@
+# dsh web container overlay: bind all interfaces.
+#
+# The product defaults the web surface to loopback and deliberately rejects
+# `--host 0.0.0.0` because the surface exposes remote code execution to anyone
+# who can reach the port. This deployment overlay re-asserts the all-interfaces
+# bind as an explicit operator decision for containerized serving: it replaces
+# the `webserver` row's whole `config` (keep the base row's `inject`/`name`),
+# defaulting the host to all-interfaces while preserving the CLI `--port`
+# override. Pass `--host 127.0.0.1` to fall back to loopback.
+- id: webserver
+  config:
+    host: !!js ctx.webStartup.host ?? '0.0.0.0'
+    port: !!js ctx.webStartup.port ?? 3080
