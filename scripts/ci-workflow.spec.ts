@@ -29,59 +29,28 @@ describe('CI workflow', () => {
 
   // Fork-local: OpScaleHub/deepseek-harness has none of the organization-owned
   // larger-runner pools or self-hosted standby VMs the upstream enterprise,
-  // Windows, Python, and failover jobs require, so ci.yml's pull-request
-  // verdict is exactly `static` + `unit` on standard GitHub-hosted runners.
+  // Windows, Python, failover, serial-standby, and benchmark jobs require, so
+  // ci.yml is exactly one job on a standard GitHub-hosted runner and exactly
+  // one trigger (`pull_request`).
   // .agents/notes/implemented/process/2026-08-16-fork-ci-trim.md
-  it('keeps exactly a static and a unit job as the pull-request verdict, with the removed enterprise, Windows, and Python jobs absent', () => {
+  it('is exactly one pull-request job on a standard runner, with every removed upstream job and trigger absent', () => {
     const workflow = loadWorkflow('.github/workflows/ci.yml')
-    const staticJob = workflowJob(workflow, 'static')
-    const unitJob = workflowJob(workflow, 'unit')
-    const aggregate = workflowJob(workflow, 'all-checks-passed')
     if (!isRecord(workflow.jobs)) throw new TypeError('CI workflow must define jobs')
 
-    for (const job of [staticJob, unitJob]) {
-      expect(job['runs-on']).toBe('ubuntu-latest')
-      expect(job.if).toBe("github.event_name == 'pull_request'")
-    }
-    expect(JSON.stringify(staticJob.steps)).toContain('pnpm run check:ci:static')
-    expect(JSON.stringify(unitJob.steps)).toContain('pnpm run test')
+    expect(Object.keys(workflow.jobs)).toEqual(['ci'])
+    expect(workflow.on).toEqual({ pull_request: null })
 
-    expect(aggregate.needs).toEqual(['static', 'unit'])
-    expect(aggregate['runs-on']).toBe('ubuntu-latest')
-
-    for (const removed of [
-      'windows', 'windows-native', 'wine-apt-cache',
-      'node-24', 'node-24-coverage', 'node-24-consumers', 'node-compat',
-      'python-sdk', 'python-runtime',
-      'serial-linux-selfhosted', 'serial-windows',
-    ]) {
-      expect(workflow.jobs, `${removed} must not be defined on this fork`).not.toHaveProperty(removed)
-    }
+    const ci = workflowJob(workflow, 'ci')
+    expect(ci['runs-on']).toBe('ubuntu-latest')
+    expect(JSON.stringify(ci.steps)).toContain('pnpm run check:ci:static')
+    expect(JSON.stringify(ci.steps)).toContain('pnpm run test')
   })
 
-  it('cancels every superseded run unconditionally now that no job runs on push', () => {
+  it('cancels every superseded run unconditionally', () => {
     const workflow = loadWorkflow('.github/workflows/ci.yml')
-    if (!isRecord(workflow.jobs) || !isRecord(workflow.concurrency) || !isRecord(workflow.on)) {
-      throw new TypeError('CI workflow must define jobs, on, and a workflow-level concurrency block')
-    }
+    if (!isRecord(workflow.concurrency)) throw new TypeError('CI workflow must define a workflow-level concurrency block')
 
-    // The self-hosted standby drills that once justified a push-only
-    // cancellation exemption are removed for this fork, so `push` is no
-    // longer a workflow trigger and cancellation is unconditional.
-    expect(workflow.on).not.toHaveProperty('push')
     expect(workflow.concurrency['cancel-in-progress']).toBe(true)
-
-    // Each benchmark still fans out to a dozen larger runners at once; an
-    // in-progress dispatch should still be replaced, not queued behind, a
-    // fresh one.
-    for (const name of ['larger-runner-benchmark', 'consolidated-runner-benchmark']) {
-      const job = workflow.jobs[name]
-      if (!isRecord(job) || !isRecord(job.strategy)) {
-        throw new TypeError(`${name} must define a matrix strategy`)
-      }
-      expect(job.strategy['max-parallel']).toBe(12)
-      expect(job['timeout-minutes']).toBe(15)
-    }
   })
 
   it('keeps supported LSP source under native Windows coverage', () => {
