@@ -282,6 +282,28 @@ describe('Python release workflows', () => {
   })
 })
 
+// Fork-local: the pnpm store cache these two `pack` jobs restored from was
+// only ever seeded by a master-only producer job with no working runner on
+// this fork, so it was a permanent, silent miss. setup-node's `cache: pnpm`
+// is self-contained (save and restore in the same job), fixing it without a
+// producer. .agents/notes/implemented/process/2026-08-16-fork-ci-trim.md
+describe('Release pack workflows', () => {
+  it('cache the pnpm store directly instead of restoring from an unseeded producer', () => {
+    for (const path of ['.github/workflows/release.yml', '.github/workflows/release-vendor.yml']) {
+      const workflow = loadWorkflow(path)
+      const pack = workflowJob(workflow, 'pack')
+      if (!Array.isArray(pack.steps)) throw new TypeError(`${path} pack job must define steps`)
+
+      const setupNode = pack.steps.find((step): step is Record<string, unknown> => (
+        isRecord(step) && typeof step.uses === 'string' && step.uses.startsWith('actions/setup-node@')
+      ))
+      expect(setupNode, `${path} pack job must use actions/setup-node`).toMatchObject({ with: { cache: 'pnpm' } })
+      expect(JSON.stringify(pack.steps), `${path} pack job must not restore from the unseeded producer cache`)
+        .not.toContain('actions/cache/restore@')
+    }
+  })
+})
+
 // Fork-local: both workflows depend on upstream-only organization state (an
 // issue-management GitHub App; a hardcoded organization and GitHub Project),
 // so this fork runs them by workflow_dispatch only rather than automatically.
