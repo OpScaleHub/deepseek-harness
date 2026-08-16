@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DeepSeek Harness Web — container image</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #0d1117;
+    --fg: #e6edf3;
+    --muted: #8b949e;
+    --border: #30363d;
+    --code-bg: #161b22;
+    --accent: #58a6ff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+  main {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem 4rem;
+  }
+  h1 {
+    font-size: 1.75rem;
+    margin: 0 0 0.5rem;
+  }
+  .tagline {
+    color: var(--muted);
+    margin: 0 0 2rem;
+  }
+  h2 {
+    font-size: 1.15rem;
+    margin: 2.5rem 0 0.75rem;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.4rem;
+  }
+  p { margin: 0 0 1rem; }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1rem;
+    overflow-x: auto;
+    font-size: 0.85rem;
+  }
+  code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  :not(pre) > code {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.1rem 0.35rem;
+    font-size: 0.9em;
+  }
+  a { color: var(--accent); }
+  ul { padding-left: 1.25rem; }
+  li { margin: 0.25rem 0; }
+  footer {
+    margin-top: 3rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>DeepSeek Harness Web</h1>
+  <p class="tagline">Self-contained container image, published to this repository's GHCR namespace.</p>
+
+  <p>
+    The dsh web container runs the browser surface of DeepSeek Harness without a checkout or a
+    Node toolchain. Each image ships the built server and frontend on <code>node:22-slim</code>;
+    the server listens on port 3080.
+  </p>
+
+  <h2>Quick start</h2>
+  <pre><code>docker pull ghcr.io/opscalehub/deepseek-harness:latest
+docker run -d --name dsh-web -p 3080:3080 -v dsh-data:/root/.dsh \
+  ghcr.io/opscalehub/deepseek-harness:latest</code></pre>
+  <p>Then open <a href="http://localhost:3080">http://localhost:3080</a> and choose a workspace.</p>
+
+  <h2>What the image gives you</h2>
+  <ul>
+    <li>The full web profile over the base harness, including the built frontend</li>
+    <li>A healthcheck, a pinned pnpm, and native modules compiled for the image</li>
+    <li>Profiles, sessions, and settings persisted under <code>/root/.dsh</code></li>
+  </ul>
+
+  <h2>Data and configuration</h2>
+  <p>
+    The container stores all harness data under <code>/root/.dsh</code>. Mount a volume there, or
+    set <code>DSH_HOME</code> to relocate it. Set <code>DSH_TELEMETRY_DISABLED=1</code> to disable
+    telemetry.
+  </p>
+
+  <h2>Secure the surface</h2>
+  <p>
+    The image defaults to binding all interfaces because the web surface can run code on the
+    host. Restrict network access to the port, or run with <code>--host 127.0.0.1</code> to
+    return to loopback.
+  </p>
+
+  <h2>Runnable as a pod</h2>
+  <p>
+    Set the container's exposed port (3080), a persistent volume mounted at
+    <code>/root/.dsh</code>, and <code>DSH_TELEMETRY_DISABLED=1</code> as needed — the same three
+    settings as the Docker quick start above translate directly to a Kubernetes container spec,
+    Compose service, or any other pod runtime.
+  </p>
+
+  <footer>
+    <p>
+      Image: <a href="https://github.com/OpScaleHub/deepseek-harness/pkgs/container/deepseek-harness">ghcr.io/opscalehub/deepseek-harness</a>
+      · Source: <a href="https://github.com/OpScaleHub/deepseek-harness">OpScaleHub/deepseek-harness</a>
+      · <a href="https://github.com/OpScaleHub/deepseek-harness/blob/master/container/README.md">Container build &amp; publish docs</a>
+    </p>
+    <p>Fork of <a href="https://github.com/deepseek-ai/deepseek-harness">deepseek-ai/deepseek-harness</a>, published under its open-source license.</p>
+  </footer>
+</main>
+</body>
+</html>
