@@ -25,19 +25,20 @@ name: E2E (real DeepSeek API)
 # The fork/secret model and its public-repo implications are recorded in
 # .agents/notes/implemented/testing/2026-06-19-real-api-e2e-ci.md.
 #
-# Note: scheduled triggers are auto-disabled after 60 days of repo inactivity;
-# push/pull_request/workflow_dispatch act as backstops.
+# Fork-local: `push`/`schedule` dropped from upstream's trigger set. The
+# job-level `if:` below only guards `pull_request` — it does nothing for
+# push or schedule, which always run and hard-fail the preflight below
+# because this fork has no DEEPSEEK_API_KEY_EXTERNAL secret. `pull_request`
+# stays: GitHub's `head.repo.fork` is true for every PR here (this repository
+# is itself a fork of deepseek-ai/deepseek-harness), so the withheld-secret
+# skip already covers every PR regardless of author.
+# .agents/notes/implemented/process/2026-08-16-fork-ci-trim.md
 on:
   workflow_dispatch:
-  push:
-    branches: [main, master]
   pull_request:
-  schedule:
-    # 00:17 UTC nightly = 08:17 Asia/Shanghai — off the top-of-hour cron stampede.
-    - cron: '17 0 * * *'
 
 # Cancel a superseded PR run (it is on a stale commit); never cancel a
-# push/schedule run — it is already producing the post-merge/nightly signal.
+# workflow_dispatch run — a human explicitly asked for that result.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
