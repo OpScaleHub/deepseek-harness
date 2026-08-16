@@ -138,6 +138,15 @@ const homeAndGuide = pairedPages([
     section: { root: 'SDK', en: 'SDK' },
     order: 1,
   },
+  {
+    source: 'docs/user/container/index.md',
+    route: 'guide/container.md',
+    label: { root: '容器化部署', en: 'Container deployment' },
+    sidebar: { root: 'zh-guide', en: 'en-guide' },
+    section: { root: '部署', en: 'Deploy' },
+    order: 1,
+    sourceAliases: ['docs/user/container'],
+  },
 ])
 
 const develop = pairedPages([
@@ -427,7 +436,7 @@ export interface DocsSection {
  */
 const sections: Record<DocsLocale, readonly DocsSection[]> = {
   root: [
-    { label: '入门' }, { label: 'SDK' },
+    { label: '入门' }, { label: '部署' }, { label: 'SDK' },
     { label: '基础' }, { label: '框架能力' }, { label: '实战' }, { label: 'Cordis 框架教程' },
     { label: '概念' }, { label: '生成参考' }, { label: 'Cordis API' }, { label: '开发手册' },
     { label: '总览' },
@@ -439,7 +448,7 @@ const sections: Record<DocsLocale, readonly DocsSection[]> = {
     { label: '平台与接入', collapsed: true },
   ],
   en: [
-    { label: 'Guide' }, { label: 'SDK' },
+    { label: 'Guide' }, { label: 'Deploy' }, { label: 'SDK' },
     { label: 'Basics' }, { label: 'Framework' }, { label: 'Practice' }, { label: 'Cordis framework tutorial' },
     { label: 'Concepts' }, { label: 'Generated reference' }, { label: 'Cordis Core API' }, { label: 'Cookbook' },
     { label: 'Overview' },
