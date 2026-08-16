@@ -25,7 +25,8 @@
     ".": {
       "entry": [
         "scripts/**/*.mjs",
-        "scripts/**/*.cjs"
+        "scripts/**/*.cjs",
+        "scripts/build-exe-for-python-sdk.ts"
       ],
       "project": [
         "scripts/**/*.ts",

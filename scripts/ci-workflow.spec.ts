@@ -69,166 +69,16 @@ describe('CI workflow', () => {
   })
 })
 
-// Fork-local: this fork has never configured the DEEPSEEK_API_KEY_EXTERNAL
-// secret the real-API e2e preflight requires, so this workflow has no
-// automatic trigger at all — every automatic trigger would only ever
-// hard-fail the deliberately loud preflight.
+// Fork-local: e2e.yml and e2b-e2e.yml are deleted, along with every other
+// workflow beyond `ci.yml` and `container-publish.yml` — this fork ships one
+// container image and needs no real-API or E2B live-suite CI.
 // .agents/notes/implemented/process/2026-08-16-fork-ci-trim.md
-describe('Real-API e2e workflow', () => {
-  it('is manual-only', () => {
-    const workflow = loadWorkflow('.github/workflows/e2e.yml')
-    const job = workflowJob(workflow, 'e2e')
 
-    expect(workflow.on).toEqual({ workflow_dispatch: null })
-    expect(job.if).toBeUndefined()
-    expect(JSON.stringify(job.steps)).toContain('DEEPSEEK_API_KEY_EXTERNAL')
-  })
-})
-
-describe('E2B e2e workflow', () => {
-  it('is manual-only and fails loud before running the focused live suite', () => {
-    const workflow = loadWorkflow('.github/workflows/e2b-e2e.yml')
-    expect(workflow.on).toEqual({ workflow_dispatch: null })
-    if (!isRecord(workflow.jobs) || !isRecord(workflow.jobs.e2b) || !Array.isArray(workflow.jobs.e2b.steps)) {
-      throw new TypeError('E2B e2e workflow must define the e2b job steps')
-    }
-
-    const steps = workflow.jobs.e2b.steps.filter(isRecord)
-    const preflight = steps.find(step => step.name === 'Preflight (require E2B API key)')
-    const e2b = steps.find(step => step.name === 'E2B tests (live sandbox)')
-
-    expect(preflight).toMatchObject({
-      env: { E2B_API_KEY: '${{ secrets.E2B_API_KEY_EXTERNAL }}' },
-    })
-    expect(preflight?.run).toContain('E2B_API_KEY_EXTERNAL repository secret')
-    expect(e2b).toMatchObject({
-      env: {
-        E2B_API_KEY: '${{ secrets.E2B_API_KEY_EXTERNAL }}',
-        DSH_E2E_MAX_WORKERS: '1',
-        DSH_EXAMPLE_MODE: 'lib',
-      },
-    })
-    expect(e2b?.run).toContain('packages/e2b/e2b/tests/composition.e2e.ts')
-  })
-})
-
+// Fork-local: python-release.yml and build-exe-for-python-sdk.yml are
+// deleted (this fork does not build or publish the Python SDK/runtime); the
+// GitLab pipeline is untouched and keeps its own macOS deployment-target
+// check, tested below.
 describe('Python release workflows', () => {
-  it('keeps complete wheel validation separate from protected public publication', () => {
-    const workflow = loadWorkflow('.github/workflows/python-release.yml')
-    const dispatch = workflowEvent(workflow, 'workflow_dispatch')
-    const pullRequest = workflowEvent(workflow, 'pull_request')
-    const build = workflowJob(workflow, 'build')
-    const pythonCompat = workflowJob(workflow, 'python-compat')
-    const validate = workflowJob(workflow, 'validate')
-    const publishRuntime = workflowJob(workflow, 'publish-runtime')
-    const publishSdk = workflowJob(workflow, 'publish-sdk')
-    if (!isRecord(dispatch.inputs)
-      || !isRecord(dispatch.inputs.publish)
-      || !Array.isArray(pythonCompat.steps)
-      || !Array.isArray(validate.steps)
-      || !Array.isArray(publishRuntime.steps)
-      || !Array.isArray(publishSdk.steps)) {
-      throw new TypeError('Python release workflow must define publish input and release steps')
-    }
-
-    expect(dispatch.inputs.publish).toMatchObject({ type: 'boolean', default: false })
-    expect(pullRequest).toEqual({ types: ['labeled'] })
-    expect(build).toMatchObject({
-      if: "github.event_name == 'workflow_dispatch' || github.event.label.name == 'python-release-dry-run'",
-      uses: './.github/workflows/build-exe-for-python-sdk.yml',
-      with: {
-        targets: 'node24-linux-x64,node24-linux-arm64,node24-macos-arm64',
-        release: true,
-      },
-    })
-    expect(pythonCompat.strategy).toMatchObject({ matrix: { python: ['3.10', '3.14'] } })
-    expect(JSON.stringify(pythonCompat.steps)).toContain('deepseek-harness-sdk==${{ steps.compatibility-version.outputs.version }}')
-    const validateSteps = JSON.stringify(validate.steps)
-    const authorize = validate.steps.filter(isRecord).find(step => step.name === 'Authorize publication request')
-    if (!isRecord(authorize) || typeof authorize.run !== 'string') {
-      throw new TypeError('Python release validation must authorize publication requests')
-    }
-    expect(validateSteps).toContain('PUBLIC_PYPI_RELEASE_ENABLED')
-    expect(authorize).toMatchObject({
-      env: {
-        PYPI_PUBLISHER_REPOSITORY: '${{ vars.PYPI_PUBLISHER_REPOSITORY }}',
-        REPOSITORY: '${{ github.repository }}',
-      },
-    })
-    expect(authorize.run).toContain('[ "$REPOSITORY" = "$PYPI_PUBLISHER_REPOSITORY" ]')
-    expect(validateSteps).toContain('100000000')
-    expect(publishRuntime).toMatchObject({
-      if: "github.event_name == 'workflow_dispatch' && inputs.publish",
-      needs: 'validate',
-      environment: 'pypi-runtime',
-      permissions: { contents: 'read', 'id-token': 'write' },
-    })
-    expect(publishSdk).toMatchObject({
-      if: "github.event_name == 'workflow_dispatch' && inputs.publish",
-      needs: ['validate', 'publish-runtime'],
-      environment: 'pypi',
-      permissions: { contents: 'read', 'id-token': 'write' },
-    })
-    const runtimeSteps = publishRuntime.steps.filter(isRecord)
-    const sdkSteps = publishSdk.steps.filter(isRecord)
-    const runtimePublish = runtimeSteps.find(step => step.name === 'Publish runtime wheels')
-    const sdkPublish = sdkSteps.find(step => step.name === 'Publish SDK wheel')
-    const runtimeHashes = runtimeSteps.find(step => step.name === 'Verify release artifact hashes')
-    const sdkHashes = sdkSteps.find(step => step.name === 'Verify release artifact hashes')
-    expect([...runtimeSteps, ...sdkSteps].some(
-      step => typeof step.uses === 'string' && step.uses.startsWith('actions/checkout@'),
-    )).toBe(false)
-    expect([...runtimeSteps, ...sdkSteps].filter(
-      step => step.uses === 'pypa/gh-action-pypi-publish@release/v1',
-    )).toHaveLength(2)
-    expect(runtimePublish).toMatchObject({
-      with: { 'packages-dir': 'dist/runtime/', attestations: false },
-    })
-    expect(sdkPublish).toMatchObject({
-      with: { 'packages-dir': 'dist/sdk/', attestations: false },
-    })
-    expect(runtimeHashes).toMatchObject({ run: 'cd dist && sha256sum -c SHA256SUMS' })
-    expect(sdkHashes).toMatchObject({ run: 'cd dist && sha256sum -c SHA256SUMS' })
-  })
-
-  it('exposes the native wheel builder to the release caller with normalized versions', () => {
-    const workflow = loadWorkflow('.github/workflows/build-exe-for-python-sdk.yml')
-    const call = workflowEvent(workflow, 'workflow_call')
-    const plan = workflowJob(workflow, 'plan')
-    const build = workflowJob(workflow, 'build')
-    if (!isRecord(call.inputs) || !Array.isArray(plan.steps) || !Array.isArray(build.steps)) {
-      throw new TypeError('Python wheel builder must define workflow_call inputs and plan steps')
-    }
-
-    const buildSteps: unknown[] = build.steps
-    const manylinuxAddon = buildSteps.find(step => isRecord(step) && step.name === 'Rebuild Linux node-pty against manylinux 2.28')
-    const macosCheck = buildSteps.find(step => isRecord(step) && step.name === 'Check macOS deployment target')
-    const manylinuxSmoke = buildSteps.find(step => isRecord(step) && step.name === 'Run wheel in a manylinux 2.28 container')
-    expect(call.inputs).toHaveProperty('targets')
-    expect(call.inputs).toMatchObject({
-      ci: { type: 'boolean', default: false },
-      release: { type: 'boolean', default: false },
-    })
-    expect(workflow.concurrency).toMatchObject({
-      group: 'build-single-exe-${{ github.workflow }}-${{ github.ref }}',
-    })
-    expect(plan.if).toContain('inputs.ci')
-    expect(plan.if).toContain('inputs.release')
-    expect(JSON.stringify(plan.steps)).toContain('pep440_version')
-    expect(JSON.stringify(workflow)).toContain('macosx_14_0_arm64')
-    expect(manylinuxAddon).toMatchObject({ if: "runner.os == 'Linux'" })
-    expect(JSON.stringify(manylinuxAddon)).toContain('manylinux_2_28_x86_64')
-    expect(JSON.stringify(manylinuxAddon)).toContain('manylinux_2_28_aarch64')
-    expect(JSON.stringify(manylinuxAddon)).toContain('$HOME/setup-pnpm:$HOME/setup-pnpm:ro')
-    expect(JSON.stringify(manylinuxAddon)).toContain('node-pty-glibc-versions.txt')
-    expect(JSON.stringify(manylinuxAddon)).toContain('le 2.28')
-    expect(macosCheck).toMatchObject({ if: "runner.os == 'macOS'" })
-    expect(JSON.stringify(macosCheck)).toContain('scripts/check-macos-deployment-target.py')
-    expect(JSON.stringify(macosCheck)).toContain('$EXE-spawn-helper')
-    expect(manylinuxSmoke).toMatchObject({ if: "runner.os == 'Linux'" })
-    expect(JSON.stringify(manylinuxSmoke)).toContain('-e DSH_TELEMETRY_DISABLED')
-  })
-
   it('uses the shared macOS deployment-target check in GitLab', () => {
     const workflow = loadWorkflow('.gitlab-ci.yml')
     const runtimeWheel = workflow['.runtime-wheel']
@@ -248,45 +98,10 @@ describe('Python release workflows', () => {
   })
 })
 
-// Fork-local: the pnpm store cache these two `pack` jobs restored from was
-// only ever seeded by a master-only producer job with no working runner on
-// this fork, so it was a permanent, silent miss. setup-node's `cache: pnpm`
-// is self-contained (save and restore in the same job), fixing it without a
-// producer. .agents/notes/implemented/process/2026-08-16-fork-ci-trim.md
-describe('Release pack workflows', () => {
-  it('cache the pnpm store directly instead of restoring from an unseeded producer', () => {
-    for (const path of ['.github/workflows/release.yml', '.github/workflows/release-vendor.yml']) {
-      const workflow = loadWorkflow(path)
-      const pack = workflowJob(workflow, 'pack')
-      if (!Array.isArray(pack.steps)) throw new TypeError(`${path} pack job must define steps`)
-
-      const setupNode = pack.steps.find((step): step is Record<string, unknown> => (
-        isRecord(step) && typeof step.uses === 'string' && step.uses.startsWith('actions/setup-node@')
-      ))
-      expect(setupNode, `${path} pack job must use actions/setup-node`).toMatchObject({ with: { cache: 'pnpm' } })
-      expect(JSON.stringify(pack.steps), `${path} pack job must not restore from the unseeded producer cache`)
-        .not.toContain('actions/cache/restore@')
-    }
-  })
-})
-
-// Fork-local: both workflows depend on upstream-only organization state (an
-// issue-management GitHub App; a hardcoded organization and GitHub Project),
-// so this fork runs them by workflow_dispatch only rather than automatically.
+// Fork-local: release.yml, release-vendor.yml, issue-lifecycle.yml, and
+// issue-policy.yml are deleted — this fork does not publish npm packages and
+// does not run the upstream-only issue-management automation.
 // .agents/notes/implemented/process/2026-08-16-fork-ci-trim.md
-describe('Issue lifecycle workflow', () => {
-  it('runs manually only on this fork, with its trusted policy job untouched', () => {
-    const lifecycle = loadWorkflow('.github/workflows/issue-lifecycle.yml')
-    const lifecycleJob = workflowJob(lifecycle, 'lifecycle')
-    const policy = loadWorkflow('.github/workflows/issue-policy.yml')
-    const policyJob = workflowJob(policy, 'policy')
-
-    expect(lifecycle.on).toEqual({ workflow_dispatch: null })
-    expect(policy.on).toEqual({ workflow_dispatch: null })
-    expect(JSON.stringify(lifecycleJob.steps)).toContain('policy.mjs lifecycle')
-    expect(JSON.stringify(policyJob.steps)).toContain('policy.mjs pr')
-  })
-})
 
 describe('Git hooks', () => {
   it('leaves frozen Agent Note sidecars to the archive verifier', () => {
@@ -310,13 +125,6 @@ function loadWorkflow(path: string): Record<string, unknown> {
   const workflow: unknown = yaml.load(readFileSync(resolve(root, path), 'utf8'))
   if (!isRecord(workflow)) throw new TypeError(`${path} must define a workflow`)
   return workflow
-}
-
-function workflowEvent(workflow: Record<string, unknown>, event: string): Record<string, unknown> {
-  if (!isRecord(workflow.on) || !isRecord(workflow.on[event])) {
-    throw new TypeError(`workflow must define the ${event} event`)
-  }
-  return workflow.on[event]
 }
 
 function workflowJob(workflow: Record<string, unknown>, job: string): Record<string, unknown> {
