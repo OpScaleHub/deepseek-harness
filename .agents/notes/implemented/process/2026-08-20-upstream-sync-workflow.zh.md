@@ -1,4 +1,4 @@
-# Agent Note: 在 fork 的 master 上做夜间上游同步
+# Agent Note: 直接基于上游 HEAD 夜间构建镜像,不再有 PR 或 CI
 
 Status: implemented
 
@@ -6,28 +6,26 @@ Status: implemented
 
 ## 问题
 
-OpScaleHub/deepseek-harness 的既定目标,是围绕上游 deepseek-ai/deepseek-harness 做一层简化的消费封装:一个发布到 `ghcr.io/opscalehub/deepseek-harness` 的预构建容器,外加一个 GitHub Pages 落地页([docs/index.html](../../../../docs/index.html))。[container-publish.yml](../../../../.github/workflows/container-publish.yml) 已经能在每次触及真实代码的 master push 上重新构建并republish `:latest`,并且始终从本仓库自己钉住的提交构建(设计上刻意不直接使用上游 HEAD——细节见该工作流开头的注释)。但此前没有任何自动化把上游提交挪到这个 fork 的 master 上:`upstream`(`deepseek-ai/deepseek-harness`)只是一个配置好的 git remote,没有任何自动化去读取它,于是一个新的上游发布会一直不体现在已发布的镜像里,直到有人手动把它合并进来。这个 fork 相对上游也确实存在真实的分叉:[CI 精简说明](2026-08-16-fork-ci-trim.md)重写了 `ci.yml` 并禁用了若干仅上游需要的工作流,因此任何自动化都不能只做一次简单的快进合并;它必须能处理真正的三方合并,以及合并可能产生的冲突。
+OpScaleHub/deepseek-harness 的既定目标,是围绕上游 deepseek-ai/deepseek-harness 做一层简化的消费封装:一个发布到 `ghcr.io/opscalehub/deepseek-harness` 的预构建容器,外加一个 GitHub Pages 落地页(`docs/index.html`)。这个决定的早期版本,是按计划把上游的 `master` 合并进这个 fork 自己的 `master`,依赖既有的、由 `pull_request` 触发的 `ci.yml`,以及由 push 触发的容器发布工作流来验证并重新发布合并结果。实际情况是,每一次需要走拉取请求(冲突时的回退方案)的同步,都会触发 `ci.yml`、一次容器构建,以及 GitHub 自身的 Pages 部署——对于一个只有镜像和落地页这两个目的的仓库来说,这是三次自动的 Actions 运行,而这两个目的都不需要一个通用的 CI 门禁。
 
 ## 决定
 
-[upstream-sync.yml](../../../../.github/workflows/upstream-sync.yml) 每晚(UTC 03:17)运行一次,外加 `workflow_dispatch`。它拉取 `upstream/master`,当 `master` 落后于它时执行 `git merge upstream/master --no-edit`。一次干净的合并会直接用默认的、拥有 `contents: write` 权限的 `GITHUB_TOKEN` push 到 `master`——`master` 没有配置分支保护,因此这次直接 push 无需任何 PAT 即可成功——而这次 push 正是与 `container-publish.yml` 之间唯一的衔接点:这个工作流本身不包含任何 Docker 或 GHCR 相关逻辑,它做的唯一一件事就是把提交移动到 `master` 上。一次产生冲突的合并绝不会被自动解决:工作流会原样暂存冲突后的目录树(`git add -A`,冲突标记原样保留、在 diff 中可见),把它提交到一个强制推送的 `upstream-sync` 分支,并针对 `master` 开出(或者说,在已存在时,由下一次运行更新)一个用于人工解决的 PR。这样可以避免这个 fork 自己刻意保留的分叉——CI 精简、落地页、`Containerfile`——被上游对同一批文件的改动悄悄覆盖掉。
+[nightly-image-sync.yml](../../../../.github/workflows/nightly-image-sync.yml) 是本仓库唯一的工作流。它没有 `pull_request` 触发器,也没有 `push` 触发器——本仓库中不会有任何东西针对拉取请求或普通提交运行。在它的夜间计划(UTC 03:17)或手动触发时,它通过 `git ls-remote` 解析上游当前的 `master` 提交,在 GHCR 中检查是否已存在与该提交对应的 `sha-<short>` 标签,除非已经发布过,否则就直接基于该上游提交构建并推送 `:latest` 和 `:sha-<short>`,使用的唯一构建输入是本仓库检出的 `Containerfile` 和 `container/web-bind-all.patch.yml`。
+
+这个 fork 自己的 `master` 分支不再与上游做任何合并,也不参与构建。`ci.yml` 被彻底删除,而不是精简:本仓库不再有任何由拉取请求触发的测试、lint 或文档检查。`Containerfile` 与 `container/` 未作改动——工作流传入的 `REPO_URL`/`REPO_REF` 与 Containerfile 自身面向上游 `master` 的默认值一致,只是为了可复现的标签而钉死在一个精确解析出的提交上。
 
 ## 考虑过的替代方案
 
-**使用 GitHub 原生的“Sync fork”快进同步。** 直接否决:这个 fork 的 `master` 上存在分叉提交(CI 精简、文档、落地页),因此 `master` 并不是 `upstream/master` 的严格祖先,第一次分叉发生之后,快进合并就普遍不再可用。
+**把上游合并进这个 fork 自己的 `master`(此前的设计),依靠 `ci.yml` 加一个冲突时的解决 PR。** 已否决:这正是本说明所取代的那个设计。每一次冲突都会产生一个拉取请求,而每一个拉取请求都会触发 `ci.yml`、一次容器重建,以及 GitHub 自动的 Pages 部署——这是这个仓库明确目标(只有一个容器镜像和一个落地页,别无其他)并不需要的 Actions 噪音。直接基于上游的引用构建,去掉了合并这一步,也就连带去掉了合并可能产生的整整一类冲突。
 
-**把 `master` 变基到 `upstream/master` 上,而不是合并。** 已否决:变基会重写每一个已经 push 出去、并且用于以 `github.sha` 构建镜像的 fork 本地提交的 SHA,导致每次同步都要对 `master` 做一次 `--force-with-lease` push。合并是仅追加的,永远不会重写某个已发布的 `:sha-<short>` 镜像标签所引用过的历史。
+**为本仓库自己的这两个工作流/构建文件保留一个轻量级的 `pull_request` CI 检查。** 已否决:本仓库唯一剩下的可编辑内容——`Containerfile`、`container/`、`docs/index.html`,以及这一个工作流——规模小到足以直接读 diff 来审查;专门为此设一个检查作业,只会重新引入本说明想要去掉的那种自动 Actions 运行模式,而在这里权衡下来并不值得。
 
-**即便合并是干净的,也总是先开一个 PR,交给人工点一下合并按钮。** 已根据本说明确认过的设计选择否决:选择在干净合并时直接 push,理由是这个 fork 明确的目标就是夜间零touch重建,而一次干净的合并(按定义,不与任何 fork 本地改动冲突)无论是否有人先点一下按钮,风险都是一样的。产生冲突的情形仍然总是会生成一个 PR。
-
-**冲突时自动倾向于保留 fork 自己那一侧的版本来解决。** 已否决:对于那些这个 fork 本就是有意 fork 出来的文件(例如 `ci.yml`),悄悄丢弃冲突中上游那一侧的内容,恰恰会在最需要人工做出合并决定的文件上,违背这次同步存在的意义。
+**用一个仓库变量或一个提交进仓库的状态文件,来跟踪“这个提交是否已经构建过”,而不是直接查询 GHCR。** 已否决:对 `sha-<short>` 标签执行 `docker buildx imagetools inspect` 不需要在已有的 `packages: write` 之外再要任何权限,不需要额外文件,也不可能与实际发布的内容出现分歧——一个状态文件或变量则可能悄悄地与 GHCR 的真实内容不一致。
 
 ## 后果
 
-当合并是干净的,一次上游发布会在一个夜间周期内落到这个 fork 的 `master` 上,并且 `container-publish.yml` 既有的 `paths-ignore` 仍然会在合并进来的提交只涉及 docs/website/examples 时跳过重新构建。这个工作流产生的合并提交会带有 `github-actions[bot]` 身份,并从此出现在 `master` 的历史里——这是预期行为,用来把一次上游同步合并与人工提交的合并区分开来。
+对本仓库的每一次 push 和拉取请求——包括对文档、`Containerfile` 或这个工作流本身的编辑——触发的 Actions 运行数都是零。GitHub 自身的 Pages 部署(与这里的任何工作流文件无关)仍然会在触及 `docs/` 的 push 上运行;这是从某个分支部署 Pages 这项平台功能本身的行为,不受本仓库工作流配置的控制。发布的镜像相对上游最多可能滞后一个夜间周期,手动 `workflow_dispatch` 是立即强制重建的唯一方式。
 
-这个 fork 放弃了在一次干净的上游合并发布之前对它做任何编辑评审;一次夜间的 `:latest` 重建有可能在任何人查看这份 diff 之前,就把一个上游的回归发布出去。日后如果给 `master` 启用分支保护,就需要重新审视这个工作流(直接 push 会开始失败),转而采用上面提到的“总是走 PR”的替代方案。
+这个 fork 放弃了对自己这一小块内容的逐拉取请求强制检查——测试、lint、文档一致性;除了这个工作流和容器构建本身之外,目前也没有任何这样的内容需要检查,而这两者都可以通过直接读 diff 来审查。如果这个 fork 的范围以后重新扩展到包含真正的产品源码改动,重新引入一个由 `pull_request` 触发的检查将是一个新的决定,而不是对本决定的推翻,因为这两个问题(校验任意的源码改动,与基于一个固定的上游提交重新发布一个容器)并不是同一个问题。
 
-`upstream-sync` 分支在存在时,保存的是一棵带有未解决冲突标记的目录树——它永远不处于可构建状态,不能原样合并。解决它的人应当使用普通合并而不是 squash:squash 会让产生的提交脱离 `upstream/master` 的祖先关系,于是下一次夜间运行里 `git rev-list HEAD..upstream/master --count` 这一步检查,会认为同样这批上游提交仍然待处理,从而重新发起同一次合并。
-
-除了 [CI 精简说明](2026-08-16-fork-ci-trim.md) 已经覆盖的那部分之外,本说明不审查也不处理这个 fork 之前任何其他本地分叉;更全面地审视此前的 fork 改动是否仍然需要保留,是一项单独的、尚未纳入范围的后续工作。
+[fork CI 精简说明](2026-08-16-fork-ci-trim.md) 记录的是更早、范围更窄的一次对 `ci.yml` 及其他上游工作流的精简;`ci.yml` 本身被本说明彻底删除;fork CI 精简说明并未因此改写,因为它作为那个中间状态的历史记录依旧准确。删除 `ci.yml` 也使得若干篇 Agent Note——包括[fork CI 精简说明](2026-08-16-fork-ci-trim.md)自身的引用——以及 `docs/development.md` 中指向它、用来描述 `ci.yml` 作业名称与触发器的链接失效——[fork CI 精简说明](2026-08-16-fork-ci-trim.md)自己的“后果”一节,在 `ci.yml` 只是被精简、还没有被删除时,就已经因为同样的理由拒绝改写这一类交叉引用:它们的内容对上游自己已上线的工作流依旧准确。本说明遵循这一先例,不逐一修复这些链接。

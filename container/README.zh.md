@@ -40,13 +40,9 @@ Containerfile 接受两个构建参数：`REPO_URL`（默认上游 `deepseek-ai/
 
 ## 发布
 
-[container-publish.yml](../.github/workflows/container-publish.yml) 在每次相关事件上构建并推送到本仓库的 GHCR 命名空间：
+[nightly-image-sync.yml](../.github/workflows/nightly-image-sync.yml) 是本仓库唯一的工作流，也是唯一会发布镜像的东西。每晚一次，外加手动触发，它会解析上游 `deepseek-ai/deepseek-harness` 当前的 `master` 提交，除非该提交已经发布过，否则就基于它构建并推送 `:latest` 和 `:sha-<short>`。它没有 `pull_request` 或 `push` 触发器——本仓库中不会有任何东西针对拉取请求或普通提交运行。这个 fork 自己的 `master` 分支不参与构建：`REPO_URL`/`REPO_REF` 直接指向解析出的上游提交，与 Containerfile 自身的默认值一致。
 
-- `master` 推送或手动触发 → `:latest` 和 `:sha-<short>`。
-- 推送 `dsh-v*` 标签 → `:<version>`（`dsh-v0.1.0-rc.5` → `0.1.0-rc.5`）和 `:latest`。
-- pull request → 仅构建验证，不发布任何内容。
-
-认证使用仓库范围的 `GITHUB_TOKEN`，权限为 `packages: write`；无需 PAT 或密钥。工作流将 `REPO_URL` 和 `REPO_REF` 指向 fork 和精确提交，因此发布的镜像与被推送的提交一致。匿名拉取前必须为仓库启用 GHCR，并将包设为公开。
+认证使用仓库范围的 `GITHUB_TOKEN`，权限为 `packages: write`；无需 PAT 或密钥。匿名拉取前必须为仓库启用 GHCR，并将包设为公开。
 
 手动发布：先 `docker login ghcr.io --username <user> --password <token>` 再 `make publish`，token 是带 `write:packages` 权限的 PAT，或 `gh auth token`。
 

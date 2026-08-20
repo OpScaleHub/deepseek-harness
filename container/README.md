@@ -40,13 +40,9 @@ Layer caching is the design center: clone, install, and build are separate `RUN`
 
 ## Publish
 
-[container-publish.yml](../.github/workflows/container-publish.yml) builds and pushes to this repository's GHCR namespace on every relevant event:
+[nightly-image-sync.yml](../.github/workflows/nightly-image-sync.yml) is the only workflow in this repository, and the only thing that publishes an image. Nightly, plus manual dispatch, it resolves upstream `deepseek-ai/deepseek-harness`'s current `master` commit and, unless that commit is already published, builds it and pushes `:latest` and `:sha-<short>`. It has no `pull_request` or `push` trigger — nothing in this repository runs against a pull request or an ordinary commit. This fork's own `master` branch plays no part in the build: `REPO_URL`/`REPO_REF` point straight at the resolved upstream commit, matching the Containerfile's own defaults.
 
-- `master` push or manual dispatch → `:latest` and `:sha-<short>`.
-- `dsh-v*` tag push → `:<version>` (`dsh-v0.1.0-rc.5` → `0.1.0-rc.5`) and `:latest`.
-- pull request → build-only validation, nothing published.
-
-Authentication is the repo-scoped `GITHUB_TOKEN` with `packages: write`; no PAT or secrets are needed. The workflow passes `REPO_URL` and `REPO_REF` pointing at the fork and the exact commit, so the published image matches the commit being pushed. GHCR must be enabled for the repository and the package set to public before anonymous pulls work.
+Authentication is the repo-scoped `GITHUB_TOKEN` with `packages: write`; no PAT or secrets are needed. GHCR must be enabled for the repository and the package set to public before anonymous pulls work.
 
 Publish manually with `make publish` after `docker login ghcr.io --username <user> --password <token>`, where the token is a PAT with `write:packages` or `gh auth token`.
 
