@@ -1,0 +1,78 @@
+name: Upstream sync
+
+# Nightly: merge deepseek-ai/deepseek-harness (upstream) master into this
+# fork's master. A clean merge is pushed straight to master — that push alone
+# is what triggers container-publish.yml to rebuild and republish :latest;
+# this workflow never touches Docker/GHCR itself. A merge that conflicts is
+# never force-resolved: the conflicted tree (markers staged as-is) is pushed
+# to the upstream-sync branch and a PR is opened/updated for manual
+# resolution, so unreviewed upstream drift can never land on master.
+
+on:
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: upstream-sync
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  UPSTREAM_URL: https://github.com/deepseek-ai/deepseek-harness.git
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: master
+          fetch-depth: 0
+
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Fetch upstream
+        run: |
+          git remote add upstream "$UPSTREAM_URL"
+          git fetch upstream master
+
+      - name: Check for new upstream commits
+        id: check
+        run: |
+          pending=$(git rev-list --count HEAD..upstream/master)
+          echo "pending=$pending" >> "$GITHUB_OUTPUT"
+
+      - name: Attempt merge
+        if: steps.check.outputs.pending != '0'
+        id: merge
+        run: |
+          if git merge upstream/master --no-edit; then
+            echo "conflict=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "conflict=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Push clean merge to master
+        if: steps.check.outputs.pending != '0' && steps.merge.outputs.conflict == 'false'
+        run: git push origin HEAD:master
+
+      - name: Publish conflicted merge for manual resolution
+        if: steps.check.outputs.pending != '0' && steps.merge.outputs.conflict == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git add -A
+          git commit -m "sync: merge upstream/master (conflicts need manual resolution)"
+          git push --force-with-lease origin HEAD:upstream-sync
+          if ! gh pr list --head upstream-sync --state open --json number -q '.[0].number' | grep -q .; then
+            gh pr create --head upstream-sync --base master \
+              --title "Upstream sync: conflicts need manual resolution" \
+              --body "Nightly merge of deepseek-ai/deepseek-harness@master into master hit conflicts. Conflict markers are committed as-is on this branch — resolve them here and merge (a regular merge, not squash, keeps upstream commits as ancestors of master so the next nightly run doesn't re-propose them)."
+          fi
